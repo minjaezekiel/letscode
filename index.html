@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>letscode</title>
+<meta name="description" content="Practice HTML, CSS, JavaScript and Python coding challenges in your browser. No install, no backend.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15181e" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="bar">
+  <h1 class="brand">lets<span>code</span></h1>
+
+  <label class="field">
+    <span>Level</span>
+    <select id="level">
+      <option value="all">All levels</option>
+      <option value="beginner">Beginner</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="master">Master</option>
+    </select>
+  </label>
+
+  <label class="field grow">
+    <span>Challenge</span>
+    <select id="pick"></select>
+  </label>
+
+  <div class="actions">
+    <button id="run" class="btn primary" type="button" title="Run (Ctrl/Cmd + Enter)">
+      <span aria-hidden="true">&#9654;</span> Run
+    </button>
+    <button id="download" class="btn" type="button" title="Download this project">Download</button>
+    <button id="reset" class="btn" type="button" title="Restore the starter code">Reset</button>
+    <button id="theme" class="btn icon" type="button" aria-label="Switch theme"><span id="theme-glyph" aria-hidden="true">&#9680;</span></button>
+  </div>
+</header>
+
+<nav class="views" aria-label="Choose panel">
+  <button type="button" data-view="challenge" aria-pressed="false">Challenge</button>
+  <button type="button" data-view="code" aria-pressed="true">Code</button>
+  <button type="button" data-view="output" aria-pressed="false">Output</button>
+</nav>
+
+<main>
+
+  <section id="challenge" class="panel" aria-labelledby="ch-title">
+    <div class="panel-head"><h2 class="panel-label">Challenge</h2><span id="badge" class="badge"></span></div>
+    <div class="panel-body prose">
+      <h3 id="ch-title" class="ch-title">Loading&hellip;</h3>
+      <div id="ch-question"></div>
+      <h4 class="sub">Expected output</h4>
+      <pre id="ch-expected" class="io"></pre>
+      <p class="note">Compare your own output with this. letscode doesn&rsquo;t check your answer &mdash; that&rsquo;s the exercise.</p>
+    </div>
+  </section>
+
+  <section id="editor" class="panel" aria-label="Code editor">
+    <div class="panel-head">
+      <h2 class="panel-label">Code</h2>
+      <div id="tabs" class="tabs" role="group" aria-label="File"></div>
+    </div>
+    <div class="panel-body flush"><textarea id="code" aria-label="Code editor"></textarea></div>
+  </section>
+
+  <section id="output" class="panel" aria-label="Output">
+    <div class="panel-head">
+      <h2 class="panel-label">Output</h2>
+      <button id="clear" class="btn tiny" type="button">Clear terminal</button>
+    </div>
+    <div class="panel-body flush split">
+      <iframe id="preview" title="Live preview of your web project" sandbox="allow-scripts"></iframe>
+      <pre id="term" class="term" aria-live="polite" aria-label="Terminal output"></pre>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="challenges.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

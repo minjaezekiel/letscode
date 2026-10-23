@@ -1,0 +1,20 @@
+{
+  "name": "letscode",
+  "short_name": "letscode",
+  "description": "Practice HTML, CSS, JavaScript and Python coding challenges in your browser.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#15181e",
+  "theme_color": "#4f46e5",
+  "categories": ["education", "developer", "productivity"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
