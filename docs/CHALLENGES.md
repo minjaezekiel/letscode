@@ -59,15 +59,22 @@ Keep the counts roughly even across levels, and mix `web` and `python` in each.
 
 ### `input()` in Python challenges
 
-`input()` works — it opens a browser prompt. Each call is one dialog, which gets
-tedious fast, so prefer hardcoded data. If you do use it, say in `question`
-exactly what to type, and make `expectedOutput` match that input.
+`input()` reads from the **Program input** box, which appears under the terminal
+as soon as the code contains `input(`. One line in the box per `input()` call, in
+order. If the box runs out of lines the program raises `EOFError`, same as
+CPython with no stdin.
+
+So a challenge using `input()` must say in `question` exactly which lines to put
+in the box, and `expectedOutput` must match that input. Prefer hardcoded data
+when the exercise isn't about reading input.
 
 ### Web challenges
 
 The preview is a sandboxed iframe with no `allow-same-origin`, so these do
-**not** work: `localStorage`, `fetch` to a same-origin path, cookies, access to
-`window.parent`. `console.log` and uncaught errors are forwarded to the terminal.
+**not** work: `localStorage`, `sessionStorage`, cookies, `fetch` to a same-origin
+path, and access to `window.parent`. Forms, `alert`/`confirm`/`prompt` and
+`window.open` do work. `console.log` and uncaught errors are forwarded to the
+terminal.
 
 Don't reference external images or CDNs — the challenge should work offline.
 

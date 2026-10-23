@@ -22,6 +22,7 @@ index.html             app shell: header, three panels, CDN script tags
 styles.css             tokens, light/dark, responsive grid
 app.js                 everything behavioural
 challenges.js          const CHALLENGES = [...]  (content only)
+py-worker.js           Pyodide, off the main thread
 manifest.webmanifest   PWA metadata
 sw.js                  offline cache
 icon.svg               app icon
@@ -60,9 +61,16 @@ CHALLENGES ──> challenge <select> ──> loadChallenge(id)
 `srcdoc` reloads the frame, so each run starts from a clean global scope — no
 teardown code needed.
 
-The iframe is `sandbox="allow-scripts"` **without** `allow-same-origin`. It is
-therefore a unique opaque origin that cannot touch the parent document,
-`localStorage`, or the service worker. The only channel out is `postMessage`.
+The iframe is `sandbox="allow-scripts allow-forms allow-modals allow-popups"`
+**without** `allow-same-origin`. It is therefore a unique opaque origin that
+cannot touch the parent document, `localStorage`, or the service worker. The
+only channel out is `postMessage`.
+
+`allow-forms` is not optional: without it the HTML form submission algorithm
+bails out *before* firing the `submit` event, so a form-based app (a chat box, a
+sign-up form, a search field) does nothing at all when you press the button, with
+no error anywhere. `allow-modals` lets `alert`/`confirm`/`prompt` work, which
+beginners use constantly.
 
 A small hook is prepended to the user's JS inside the frame: it wraps
 `console.log/info/warn/error`, `window.onerror` and `unhandledrejection`, and
@@ -78,41 +86,41 @@ mode. The terminal takes the whole output panel until then.
 
 ### Python run
 
-Pyodide is injected on the **first** Python run, not in `index.html`:
+Python runs in `py-worker.js`, a classic Web Worker that `importScripts` Pyodide
+from the CDN on first use. The main thread only sends code and receives output,
+so a `while True:` in a learner's program freezes nothing, output keeps
+streaming, and **Stop** (`worker.terminate()`) ends it outright.
 
-```js
-let pyPromise;
-function ensurePyodide() {
-  return pyPromise ??= new Promise((res, rej) => { /* append <script>, then loadPyodide() */ });
-}
-```
-
-The promise is cached, so the ~10 MB download happens at most once per session,
-and never at all for someone who only does web challenges.
-
-- `setStdout` / `setStderr` with `batched:` handlers append to the terminal.
-- `setStdin` returns `window.prompt(...)`, so `input()` works.
-- `runPythonAsync` is awaited in a `try/catch`; the caught error's message is
-  the Python traceback, which is printed to the terminal. A failing program
-  must never break the app. `cleanTraceback()` drops Pyodide's own
-  `_base.py` frames above the learner's `File "<exec>"` frame, which are noise
-  to someone debugging their own code.
-
-Pyodide runs on the **main thread**. An infinite loop in user code freezes the
-tab, and the only way out is closing it. The fix is a Web Worker, which costs a
-message protocol and loses the simple blocking `prompt()` for `input()` — not
-worth it until someone actually complains. Marked in `app.js` with a
-`ponytail:` comment naming the upgrade path.
+- **stdout/stderr** are batched in the worker and flushed at most every 50ms. A
+  runaway print loop blocks the worker, so its timers never fire — the flush is
+  therefore triggered by a `Date.now()` check inside the write callback, not by a
+  timer. Each flush carries at most 200 lines; anything faster than that is
+  dropped like terminal scrollback, and the page prints `… N lines dropped`.
+  Without that cap, a tight print loop delivers one message per line and buries
+  the main thread even though Python is in a worker.
+- **The terminal keeps at most `TERM_MAX` (5000) lines**, dropping the oldest, so
+  the DOM cannot grow without bound.
+- **stdin** comes from the "Program input" textarea, consumed one line per
+  `input()` call. Past the last line the handler returns `null`, which Pyodide
+  treats as EOF, so `input()` raises `EOFError` exactly as CPython would, and the
+  page adds a hint pointing at the box. The box is hidden until the code actually
+  matches `/\binput\s*\(/`.
+- `loadPackagesFromImports(code)` runs before the code, so `import numpy` (or
+  pandas, sympy…) pulls the package from the Pyodide distribution automatically.
+- Terminating the worker throws away the loaded interpreter, so the run after a
+  Stop boots Pyodide again — from the HTTP cache, so it is quick.
+- A worker cannot be created from a `file://` page, so Python needs a served
+  origin. The app says so in the terminal instead of failing silently.
 
 ## Decisions
 
 | Decision | Chosen | Rejected, and why |
 |---|---|---|
 | Python runtime | **Pyodide 0.26.4** — real CPython 3.12, maintained, correct semantics | **Skulpt**: ~1 MB and instant, but a stale Python 2/3 subset — limited stdlib, f-string and exception gaps would force us to write challenges around its bugs. **Brython**: transpiles to JS, also diverges from CPython. A 10 MB one-time cached download buys correctness |
-| `input()` | **`window.prompt()`** via `setStdin`, ~5 lines | **Interactive terminal input line**: needs Pyodide in a Worker plus `SharedArrayBuffer`/`Atomics` for blocking reads, which needs COOP/COEP response headers — impossible on plain static hosting and on `file://` |
+| `input()` | **A "Program input" textarea**, read one line per call | **`window.prompt()`**: impossible from a worker, and one dialog per call is miserable past the second one. **A typed terminal line**: needs `SharedArrayBuffer`/`Atomics` for blocking reads, which needs COOP/COEP response headers — impossible on plain static hosting |
 | Editor | **CodeMirror 5.65.16** from cdnjs, drop-in `<script>` | **CodeMirror 6**: better, but ESM-only and expects a bundler. **Monaco**: ~5 MB and a loader shim. **Plain `<textarea>`**: zero deps but no highlighting or line numbers, a real downgrade for the core activity |
 | Challenge data | **`challenges.js` global** | **`challenges.json` + fetch**: breaks on `file://` and adds a request and a loading state for static content |
-| Python sandbox | **Main thread** | **Web Worker**: safe from infinite loops, but needs a message protocol and loses blocking `input()` |
+| Python sandbox | **Web Worker** — an infinite loop cannot freeze the page, and Stop can kill it | **Main thread**: simpler and allows a blocking `prompt()` for `input()`, but one `while True:` locks the tab with no way out but closing it. That is the single worst failure mode in a learning app |
 | Fonts | **System stacks** | **Google Fonts**: a render-blocking third-party request that also breaks the offline story, for a font nobody asked for |
 | Download | **Single self-contained file** via `Blob` | **JSZip**: a dependency so a 3-file project can arrive as 3 files instead of 1 |
 | Deploy config | **None** | `vercel.json` / `netlify.toml`: both platforms serve a static root correctly by default |
@@ -139,7 +147,7 @@ the page. Flex ignores it cleanly.
 
 `sw.js`:
 
-- **install** — precache the local shell (`.`, `index.html`, `styles.css`, `app.js`, `challenges.js`, `manifest.webmanifest`, `icon.svg`) and the CodeMirror CDN files.
+- **install** — precache the local shell (`.`, `index.html`, `styles.css`, `app.js`, `challenges.js`, `py-worker.js`, `manifest.webmanifest`, `icon.svg`) and the CodeMirror CDN files.
 - **activate** — delete caches whose name isn't the current `CACHE` constant.
 - **fetch** — GET only. Cache-first; on a miss, go to the network and store a successful response. Pyodide is therefore cached after its first real use but never eagerly downloaded.
 

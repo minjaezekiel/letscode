@@ -139,6 +139,12 @@ select { padding-right: var(--s2); }
   font-weight: 650;
 }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+.btn.danger { color: var(--err); border-color: var(--err); font-weight: 650; }
+.btn.danger:hover { background: var(--err); color: var(--bg); }
+
+/* Stop only exists while something is running */
+#stop { display: none; }
+body[data-running="yes"] #stop { display: inline-block; }
 .btn.icon { padding: 0 var(--s3); font-size: 17px; }
 .btn.tiny { min-height: 28px; font-size: 13px; padding: 0 var(--s2); }
 
@@ -272,6 +278,7 @@ main {
 .split { display: grid; grid-template-rows: 1fr minmax(96px, 40%); }
 body[data-lang="python"] .split,
 body[data-ran="no"] .split { grid-template-rows: minmax(0, 1fr); }
+body[data-lang="python"][data-stdin="yes"] .split { grid-template-rows: minmax(0, 1fr) auto; }
 
 /* an empty iframe is a white slab, which looks broken in dark mode */
 body[data-lang="python"] #preview,
@@ -294,6 +301,32 @@ body[data-ran="no"] .term { border-top: 0; }
 .term .err { color: var(--err); }
 .term .warn { color: var(--warn); }
 .term .muted { color: var(--text-muted); }
+
+/* stdin box: only shown when the code calls input() */
+#stdin-box { display: none; }
+body[data-lang="python"][data-stdin="yes"] #stdin-box {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3) var(--s3);
+  border-top: 1px solid var(--border);
+}
+#stdin-box > span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+#stdin {
+  width: 100%;
+  resize: vertical;
+  padding: var(--s2);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r1);
+  font: 400 14px/1.5 var(--font-mono);
+}
 
 /* ---------- responsive ---------- */
 

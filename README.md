@@ -7,7 +7,8 @@ the expected output.
 No backend. No build step. No npm. Just static files.
 
 - **Web challenges** render in a sandboxed live preview; `console.log` goes to the terminal.
-- **Python challenges** run real CPython 3.12 compiled to WebAssembly ([Pyodide](https://pyodide.org)), entirely in the browser.
+- **Python challenges** run real CPython 3.12 compiled to WebAssembly ([Pyodide](https://pyodide.org)), entirely in the browser, in a worker — so an infinite loop can't freeze the page and **Stop** always ends it.
+- `input()` reads from a **Program input** box that appears when your code needs it, and `import numpy` (or pandas, sympy…) just works.
 - **Installable** — it's a PWA, so you can install it from the browser and use it offline.
 - **Light and dark mode**, following your system setting, with a manual toggle.
 - **Download** your work as a single runnable file.
@@ -25,8 +26,9 @@ Please don't add a `solution` field or an output-diffing "Check" button. See
 
 ## Run it locally
 
-A service worker and `fetch` need a real origin, so open it over HTTP rather
-than double-clicking the file:
+Python runs in a Web Worker, which a `file://` page is not allowed to create, so
+open it over HTTP rather than double-clicking the file (the HTML/CSS/JS side
+works either way):
 
 ```sh
 python3 -m http.server 8000

@@ -39,6 +39,7 @@
     <button id="run" class="btn primary" type="button" title="Run (Ctrl/Cmd + Enter)">
       <span aria-hidden="true">&#9654;</span> Run
     </button>
+    <button id="stop" class="btn danger" type="button" title="Stop the running program">&#9632; Stop</button>
     <button id="download" class="btn" type="button" title="Download this project">Download</button>
     <button id="reset" class="btn" type="button" title="Restore the starter code">Reset</button>
     <button id="theme" class="btn icon" type="button" aria-label="Switch theme"><span id="theme-glyph" aria-hidden="true">&#9680;</span></button>
@@ -78,8 +79,12 @@
       <button id="clear" class="btn tiny" type="button">Clear terminal</button>
     </div>
     <div class="panel-body flush split">
-      <iframe id="preview" title="Live preview of your web project" sandbox="allow-scripts"></iframe>
+      <iframe id="preview" title="Live preview of your web project" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
       <pre id="term" class="term" aria-live="polite" aria-label="Terminal output"></pre>
+      <label id="stdin-box">
+        <span>Program input &mdash; one line per input() call</span>
+        <textarea id="stdin" rows="2" spellcheck="false" placeholder="Ada&#10;42"></textarea>
+      </label>
     </div>
   </section>
 

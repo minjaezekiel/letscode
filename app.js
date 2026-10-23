@@ -4,7 +4,6 @@
 
 const FILES = { web: ['html', 'css', 'js'], python: ['py'] };
 const MODES = { html: 'htmlmixed', css: 'css', js: 'javascript', py: 'python' };
-const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -19,6 +18,7 @@ const codeKey = (id, f) => 'letscode:code:' + id + ':' + f;
 /* ---------- terminal ---------- */
 
 const termEl = $('term');
+const TERM_MAX = 5000;   // a runaway print loop would otherwise grow the DOM until the tab dies
 
 function term(text, cls) {
   const body = String(text).replace(/\n$/, '');
@@ -29,6 +29,7 @@ function term(text, cls) {
     line.textContent = prefix + raw;
     termEl.appendChild(line);
   }
+  while (termEl.children.length > TERM_MAX) termEl.removeChild(termEl.firstChild);
   termEl.scrollTop = termEl.scrollHeight;
 }
 
@@ -77,6 +78,11 @@ if (window.CodeMirror) {
 
 const refreshEditor = () => requestAnimationFrame(() => ed.refresh());
 
+// the stdin box is clutter until the code actually reads from it
+const syncStdinBox = () => {
+  document.body.dataset.stdin = /\binput\s*\(/.test(ed.getValue()) ? 'yes' : 'no';
+};
+
 /* ---------- state ---------- */
 
 let current = null;        // the active challenge
@@ -98,6 +104,7 @@ function stash() {
 let saveTimer;
 ed.onChange(() => {
   stash();
+  if (current && current.lang === 'python') syncStdinBox();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     if (current) lsSet(codeKey(current.id, file), ed.getValue());
@@ -162,6 +169,7 @@ function renderPicker() {
 }
 
 function load(id) {
+  if (running) stopPython();
   const ch = CHALLENGES.find((c) => c.id === id) || CHALLENGES[0];
   current = ch;
   file = FILES[ch.lang][0];
@@ -174,6 +182,7 @@ function load(id) {
   ed.setValue(codeOf(ch, file), MODES[file]);
   renderTabs();
   refreshEditor();
+  syncStdinBox();
 
   clearTerm();
   $('preview').removeAttribute('srcdoc');
@@ -224,32 +233,64 @@ window.addEventListener('message', (e) => {
 
 /* ---------- run: python ---------- */
 
-// ponytail: Pyodide runs on the main thread, so an infinite loop in user code
-// freezes the tab. Move it into a Web Worker if that becomes a real complaint
-// (costs a message protocol and blocking input() via SharedArrayBuffer).
-let pyPromise = null;
-let pyReady = false;
+// Pyodide lives in a worker: an infinite loop in a learner's code then freezes
+// nothing, output still streams, and Stop can terminate it outright.
+let worker = null;
+let pyBooted = false;
+let running = false;
 
-function ensurePyodide() {
-  if (pyPromise) return pyPromise;
-  pyPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = PYODIDE_URL;
-    s.onload = () => resolve(loadPyodide());
-    s.onerror = () => reject(new Error(
-      'Could not load Python. The first Python run needs to be online — reconnect and try again.'));
-    document.head.appendChild(s);
-  }).then((py) => {
-    py.setStdout({ batched: (t) => term(t) });
-    py.setStderr({ batched: (t) => term(t, 'err') });
-    py.setStdin({ stdin: () => window.prompt('Python input():') || '' });
-    pyReady = true;
-    return py;
-  }).catch((err) => {
-    pyPromise = null;              // let the next Run retry
-    throw err;
+function pyWorker() {
+  if (worker) return worker;
+  try {
+    worker = new Worker('py-worker.js');
+  } catch (err) {
+    term('Python needs a local web server \u2014 opening the file directly blocks workers.', 'err');
+    term('Run:  python3 -m http.server 8000', 'muted');
+    return null;
+  }
+  worker.addEventListener('message', (e) => {
+    const m = e.data;
+    if (m.type === 'batch') {
+      // a flood only has to render what will still be on screen
+      if (m.dropped) term('\u2026 ' + m.dropped + ' lines dropped, output is faster than the screen', 'muted');
+      for (const [type, text] of m.items) writeOut(type, text);
+    }
+    else if (m.type === 'out') term(m.text);
+    else if (m.type === 'err') {
+      term(cleanTraceback(m.text), 'err');
+      if (/EOFError/.test(m.text)) {
+        term('Tip: put the values your program reads into the Program input box below, one per line.', 'muted');
+      }
+    }
+    else if (m.type === 'ready') { if (!pyBooted) { pyBooted = true; clearTerm(); } }
+    else if (m.type === 'done') endRun();
   });
-  return pyPromise;
+  worker.addEventListener('error', (e) => {
+    term('Python failed to start: ' + (e.message || 'unknown error'), 'err');
+    endRun();
+  });
+  return worker;
+}
+
+function writeOut(type, text) {
+  if (type === 'out') { term(text); return; }
+  term(cleanTraceback(text), 'err');
+  if (/EOFError/.test(text)) {
+    term('Tip: put the values your program reads into the Program input box below, one per line.', 'muted');
+  }
+}
+
+function endRun() {
+  running = false;
+  $('run').disabled = false;
+  document.body.dataset.running = 'no';
+}
+
+function stopPython() {
+  if (worker) worker.terminate();
+  worker = null;
+  pyBooted = false;        // a terminated worker loses the interpreter
+  endRun();
 }
 
 // Pyodide tracebacks start with its own _base.py frames, which mean nothing to
@@ -261,20 +302,15 @@ function cleanTraceback(message) {
   return ['Traceback (most recent call last):'].concat(lines.slice(start)).join('\n');
 }
 
-async function runPython() {
-  const btn = $('run');
-  btn.disabled = true;
+function runPython() {
+  const w = pyWorker();
+  if (!w) return;
   clearTerm();
-  if (!pyReady) term('Loading Python… the first run downloads about 10 MB, then it is cached.', 'muted');
-  try {
-    const py = await ensurePyodide();
-    clearTerm();
-    await py.runPythonAsync(ed.getValue());
-  } catch (err) {
-    term(cleanTraceback((err && err.message) || String(err)), 'err');
-  } finally {
-    btn.disabled = false;
-  }
+  running = true;
+  $('run').disabled = true;
+  document.body.dataset.running = 'yes';
+  if (!pyBooted) term('Loading Python\u2026 the first run downloads about 10 MB, then it is cached.', 'muted');
+  w.postMessage({ code: ed.getValue(), stdin: $('stdin').value });
 }
 
 function run() {
@@ -339,6 +375,11 @@ osDark.addEventListener('change', () => { if (!lsGet('letscode:theme')) applyThe
 $('run').addEventListener('click', run);
 $('download').addEventListener('click', download);
 $('clear').addEventListener('click', clearTerm);
+
+$('stop').addEventListener('click', () => {
+  stopPython();
+  term('Stopped.', 'warn');
+});
 
 $('theme').addEventListener('click', () => {
   lsSet('letscode:theme', isDark() ? 'light' : 'dark');

@@ -1,5 +1,5 @@
 /* letscode offline cache. Bump CACHE to invalidate. See docs/ARCHITECTURE.md. */
-const CACHE = 'letscode-v1';
+const CACHE = 'letscode-v2';
 const CM = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16';
 
 const SHELL = [
@@ -8,6 +8,7 @@ const SHELL = [
   'styles.css',
   'app.js',
   'challenges.js',
+  'py-worker.js',
   'manifest.webmanifest',
   'icon.svg',
   CM + '/codemirror.min.css',
