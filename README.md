@@ -39,16 +39,35 @@ Any static server works (`npx serve`, `php -S localhost:8000`, VS Code Live
 Server). `localhost` counts as a secure origin, so install and offline work
 there too.
 
-## Install as an app
+## Install it as an app
 
-Load it over HTTPS (or `localhost`), then:
+letscode is a PWA. Installing needs **HTTPS** (or `localhost`) — a `file://`
+copy can't be installed, and can't run Python either. So put it on a host first
+(see below), then install from that URL.
 
-- **Chrome / Edge** — the install icon in the address bar, or ⋮ → *Install letscode*
+Once the page is open, letscode shows an **Install** button in its header as
+soon as the browser says it is installable. Failing that, use the browser's own
+control:
+
+- **ChromeOS / Chrome / Edge** — the install icon at the right of the address bar, or ⋮ → *Cast, save and share* → *Install page as app*
 - **Safari (macOS / iOS)** — Share → *Add to Dock* / *Add to Home Screen*
 - **Android Chrome** — ⋮ → *Add to Home screen*
 
-The app shell is cached on first load. Python needs one online run to download
-Pyodide (~10 MB), after which it is cached and works offline too.
+### For a class of Chromebooks
+
+1. Deploy once (below) and give students the one HTTPS URL.
+2. Each student opens it and clicks **Install**. letscode lands in the ChromeOS
+   launcher and opens in its own window, no tabs, no address bar.
+3. Have them run one Python challenge while still online. That downloads
+   Pyodide (~10 MB) once; the service worker caches it, and Python keeps working
+   offline afterwards. The HTML/CSS/JS side is offline from the first load.
+4. Nothing is installed on the machine beyond the browser's own app entry, and
+   no student work leaves the device — code is kept in that browser's
+   `localStorage`.
+
+Admins can also push it to managed Chromebooks as a web app via the Google Admin
+console (Devices → Chrome → Apps & extensions → *Add by URL*), which installs it
+for every student without them clicking anything.
 
 ## Deploy for free
 

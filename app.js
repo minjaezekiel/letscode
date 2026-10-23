@@ -31,6 +31,7 @@ function term(text, cls) {
   }
   while (termEl.children.length > TERM_MAX) termEl.removeChild(termEl.firstChild);
   termEl.scrollTop = termEl.scrollHeight;
+  if (document.body.dataset.out === 'preview') document.body.dataset.unread = 'yes';
 }
 
 const clearTerm = () => { termEl.textContent = ''; };
@@ -77,6 +78,14 @@ if (window.CodeMirror) {
 }
 
 const refreshEditor = () => requestAnimationFrame(() => ed.refresh());
+
+function showOutput(which) {
+  document.body.dataset.out = which;
+  if (which === 'term') document.body.dataset.unread = 'no';
+  for (const b of document.querySelectorAll('#out-tabs button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.out === which));
+  }
+}
 
 // the stdin box is clutter until the code actually reads from it
 const syncStdinBox = () => {
@@ -186,7 +195,7 @@ function load(id) {
 
   clearTerm();
   $('preview').removeAttribute('srcdoc');
-  document.body.dataset.ran = 'no';
+  showOutput('term');
   term(ch.lang === 'python'
     ? 'Press Run to execute your Python.'
     : 'Press Run to render your page. console.log output appears here.', 'muted');
@@ -205,9 +214,9 @@ const HOOK = '<script>(function(){' +
   '["log","info","debug","warn","error"].forEach(function(m){' +
     'var o=console[m]?console[m].bind(console):function(){};' +
     'console[m]=function(){send(m==="warn"||m==="error"?m:"log",arguments);o.apply(null,arguments)}});' +
-  'window.onerror=function(m,s,l){send("error",[m+(l?" (line "+l+")":"")]);};' +
+  'window.onerror=function(m,s,l){send("fatal",[m+(l?" (line "+l+")":"")]);};' +
   'window.addEventListener("unhandledrejection",function(e){' +
-    'send("error",["Unhandled promise rejection: "+((e.reason&&e.reason.message)||e.reason)])});' +
+    'send("fatal",["Unhandled promise rejection: "+((e.reason&&e.reason.message)||e.reason)])});' +
   '})();<\/script>';
 
 function runWeb() {
@@ -216,7 +225,7 @@ function runWeb() {
   const js = get('js').replace(/<\/script/gi, '<\\/script');
 
   clearTerm();
-  document.body.dataset.ran = 'yes';
+  showOutput('preview');
   $('preview').srcdoc =
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -228,7 +237,10 @@ window.addEventListener('message', (e) => {
   if (e.source !== $('preview').contentWindow) return;
   const d = e.data;
   if (!d || d.__letscode !== 1) return;
-  term(d.text, d.level === 'error' ? 'err' : d.level === 'warn' ? 'warn' : '');
+  const fatal = d.level === 'fatal';
+  term(d.text, fatal || d.level === 'error' ? 'err' : d.level === 'warn' ? 'warn' : '');
+  // an uncaught error is worth switching to; ordinary logs only earn a dot
+  if (fatal) showOutput('term');
 });
 
 /* ---------- run: python ---------- */
@@ -403,6 +415,10 @@ $('level').addEventListener('change', () => {
 
 $('pick').addEventListener('change', () => load($('pick').value));
 
+for (const b of document.querySelectorAll('#out-tabs button')) {
+  b.addEventListener('click', () => showOutput(b.dataset.out));
+}
+
 for (const b of document.querySelectorAll('.views button')) {
   b.addEventListener('click', () => {
     document.body.dataset.view = b.dataset.view;
@@ -417,6 +433,29 @@ window.addEventListener('resize', refreshEditor);
 
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+});
+
+// Chrome fires this when the app is installable; the omnibox icon is easy to
+// miss on a Chromebook, so offer a button instead.
+let installPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $('install').hidden = false;
+});
+
+$('install').addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $('install').hidden = true;
+});
+
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  $('install').hidden = true;
 });
 
 if ('serviceWorker' in navigator) {

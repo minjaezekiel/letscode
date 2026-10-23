@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15181e" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
@@ -42,6 +42,7 @@
     <button id="stop" class="btn danger" type="button" title="Stop the running program">&#9632; Stop</button>
     <button id="download" class="btn" type="button" title="Download this project">Download</button>
     <button id="reset" class="btn" type="button" title="Restore the starter code">Reset</button>
+    <button id="install" class="btn" type="button" hidden>&#8595; Install</button>
     <button id="theme" class="btn icon" type="button" aria-label="Switch theme"><span id="theme-glyph" aria-hidden="true">&#9680;</span></button>
   </div>
 </header>
@@ -76,7 +77,11 @@
   <section id="output" class="panel" aria-label="Output">
     <div class="panel-head">
       <h2 class="panel-label">Output</h2>
-      <button id="clear" class="btn tiny" type="button">Clear terminal</button>
+      <div id="out-tabs" class="tabs" role="group" aria-label="Output view">
+        <button type="button" data-out="preview" aria-pressed="false">Preview</button>
+        <button type="button" data-out="term" aria-pressed="true">Terminal</button>
+      </div>
+      <button id="clear" class="btn tiny" type="button">Clear</button>
     </div>
     <div class="panel-body flush split">
       <iframe id="preview" title="Live preview of your web project" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>

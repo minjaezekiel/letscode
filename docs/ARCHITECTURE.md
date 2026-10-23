@@ -25,7 +25,9 @@ challenges.js          const CHALLENGES = [...]  (content only)
 py-worker.js           Pyodide, off the main thread
 manifest.webmanifest   PWA metadata
 sw.js                  offline cache
-icon.svg               app icon
+icon.svg               app icon (source)
+icon-192.png           app icon, rendered from icon.svg
+icon-512.png           app icon, rendered from icon.svg
 docs/                  this folder
 ```
 
@@ -80,9 +82,15 @@ errors in a sandboxed frame would be invisible.
 `app.js` checks `event.source === iframe.contentWindow` before trusting a
 message, so other frames or extensions can't write into the terminal.
 
-The iframe is hidden (`body[data-ran="no"]`) until the first run of a
-challenge, because an empty iframe is a white slab that looks broken in dark
-mode. The terminal takes the whole output panel until then.
+The output panel is a two-tab view — **Preview** and **Terminal** — stacked in
+one full-height grid cell, with `body[data-out]` deciding which shows. A fixed
+split wasted most of the column on whichever half was empty. Rules:
+
+- A challenge starts on **Terminal** (which carries the "press Run" hint), so no one sees an empty white iframe.
+- A web run switches to **Preview**.
+- Output arriving while Preview is showing lights a dot on the Terminal tab.
+- An **uncaught** error switches to Terminal by itself, so a broken page is never silently broken. The hook sends `level: "fatal"` for `window.onerror` and `unhandledrejection`, as distinct from a deliberate `console.error`.
+- A Python challenge hides the Preview tab entirely.
 
 ### Python run
 
@@ -157,9 +165,14 @@ Caveat: cache-first means a deployed update is picked up on the *next* load
 after the new service worker activates. For a hand-edited static app that's an
 acceptable trade for a simple, genuinely offline shell.
 
-The manifest uses a single SVG icon (`purpose: "any maskable"`), which Chromium
-and Safari accept for install. If a target browser ever rejects it, add PNG
-192×192 and 512×512 beside it.
+The manifest lists PNG icons at 192 and 512 (plus a maskable 512 and the SVG).
+Chrome's installability check wants a raster icon of at least 192px, and
+ChromeOS and iOS are happier with PNG than SVG, so the PNGs are the ones that
+matter — they are rendered from `icon.svg`, which stays the source of truth.
+
+`app.js` listens for `beforeinstallprompt`, stashes the event and reveals the
+header's **Install** button, because the omnibox install icon is easy to miss.
+The button hides itself again on `appinstalled`.
 
 ## Storage
 

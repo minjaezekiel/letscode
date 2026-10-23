@@ -139,6 +139,7 @@ select { padding-right: var(--s2); }
   font-weight: 650;
 }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+.btn[hidden] { display: none; }
 .btn.danger { color: var(--err); border-color: var(--err); font-weight: 650; }
 .btn.danger:hover { background: var(--err); color: var(--bg); }
 
@@ -203,7 +204,7 @@ main {
   color: var(--text-muted);
 }
 
-.panel-head > .btn, .panel-head > .tabs { margin-left: auto; }
+.panel-label { margin-right: auto; }
 
 .panel-body { flex: 1; min-height: 0; overflow: auto; padding: var(--s4); }
 .panel-body.flush { padding: 0; overflow: hidden; }
@@ -275,29 +276,44 @@ main {
 
 /* ---------- output ---------- */
 
-.split { display: grid; grid-template-rows: 1fr minmax(96px, 40%); }
-body[data-lang="python"] .split,
-body[data-ran="no"] .split { grid-template-rows: minmax(0, 1fr); }
-body[data-lang="python"][data-stdin="yes"] .split { grid-template-rows: minmax(0, 1fr) auto; }
+/* Preview and Terminal share one full-height cell; the tabs pick which shows,
+   so neither is squeezed into a half-empty strip. */
+.split { display: grid; grid-template-rows: minmax(0, 1fr); }
+body[data-stdin="yes"][data-lang="python"] .split { grid-template-rows: minmax(0, 1fr) auto; }
 
-/* an empty iframe is a white slab, which looks broken in dark mode */
-body[data-lang="python"] #preview,
-body[data-ran="no"] #preview { display: none; }
+#preview, .term { grid-row: 1; grid-column: 1; }
 
 #preview { width: 100%; height: 100%; border: 0; background: #ffffff; }
+
+body[data-out="term"] #preview,
+body[data-lang="python"] #preview { display: none; }
+body[data-out="preview"]:not([data-lang="python"]) .term { display: none; }
+
+/* Preview is meaningless for a Python challenge */
+body[data-lang="python"] #out-tabs button[data-out="preview"] { display: none; }
+
+/* a dot on the Terminal tab when output arrives while the preview is showing */
+#out-tabs button[data-out="term"]::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: var(--s1);
+  border-radius: 50%;
+  background: var(--accent);
+  visibility: hidden;
+}
+body[data-unread="yes"] #out-tabs button[data-out="term"]::after { visibility: visible; }
 
 .term {
   margin: 0;
   padding: var(--s3);
   overflow: auto;
   background: var(--bg);
-  border-top: 1px solid var(--border);
   font: 400 14px/1.5 var(--font-mono);
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
-body[data-lang="python"] .term,
-body[data-ran="no"] .term { border-top: 0; }
 .term .err { color: var(--err); }
 .term .warn { color: var(--warn); }
 .term .muted { color: var(--text-muted); }

@@ -116,6 +116,13 @@ and CSS hides the other two panels. The grid rows use `min-height: 0` so the
 editor and terminal scroll internally instead of growing the page — nothing
 scrolls horizontally at 320px.
 
+## Output panel
+
+Preview and Terminal are tabs, not a split — each gets the panel's full height.
+The tabs reuse the editor's file-tab styling, and the Terminal tab carries a
+7px accent dot when there is unread output. Tab state lives on `body[data-out]`
+so the switching is CSS, and `aria-pressed` tracks it for screen readers.
+
 ## Accessibility checklist
 
 Every control has a visible `<label>` or an `aria-label`. The terminal is
